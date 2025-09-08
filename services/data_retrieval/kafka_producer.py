@@ -13,26 +13,15 @@ class KafkaProducerService:
             key_serializer=lambda k: json.dumps(k, default=str).encode("utf-8") if k is not None else None
         )
 
-    def send(
-            self,
-            topic: str,
-            value: Any,
-            key: Any = None,
-            headers: Any = None
-    ) -> None:
+    def send(self, topic: str, value: Any) -> None:
         """
-        Send a message to a Kafka topic
+        Send an event to a Kafka topic
 
         Args:
-            topic: The name of the topic to send the message to
-            value: The value of the message
-            key: The key of the message
-            headers: The headers of the message
-
-        Returns:
-            None
+            topic: The name of the topic to send the evnet to
+            value: The value of the event
         """
-        self._producer.send(topic, value, key, headers)
+        self._producer.send(topic, value)
 
     def _flush(self) -> None:
         self._producer.flush()
