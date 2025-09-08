@@ -1,31 +1,25 @@
 import os
 
-from dotenv import load_dotenv
-
-from data_processor import DataProcessor
-from file_retrieval import FileRetrieval
+from file_details_processor import FileDetailsProcessor
+from file_details_retrieval import FileDetailsRetrieval
 from kafka_producer import KafkaProducerService
-
-
-load_dotenv()
-
-
-FOLDER_PATH = os.getenv("FOLDER_PATH", r"C:\Users\User\Desktop\podcasts")
-BOOTSTRAP_SERVERS = os.getenv("BOOTSTRAP_SERVERS", "localhost:9092")
-KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "file_metadata")
+from services.data_retrieval.config import Config
 
 
 def main() -> None:
-    kafka_producer = KafkaProducerService(BOOTSTRAP_SERVERS)
+    config = Config.from_env()
 
-    for file in os.listdir(FOLDER_PATH):
-        file_path = os.path.join(FOLDER_PATH, file)
-        file_retrieval = FileRetrieval(file_path)
-        data_processor = DataProcessor(file_retrieval)
+    kafka_producer = KafkaProducerService(config.kafka_bootstrap_servers)
+
+    for file in os.listdir(config.local_folder_path):
+        file_path = os.path.join(config.local_folder_path, file)
+        file_details = FileDetailsRetrieval(file_path)
+        data_processor = FileDetailsProcessor(file_details)
         kafka_producer.send(
-            topic=KAFKA_TOPIC,
-            value=data_processor.get_file_data_json()
+            topic=config.kafka_topic_name,
+            value=data_processor.get_file_details()
         )
+
     kafka_producer.close()
 
 if __name__ == "__main__":
