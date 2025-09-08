@@ -1,3 +1,4 @@
+import json
 from typing import Any
 
 from kafka import KafkaConsumer
@@ -9,8 +10,8 @@ class KafkaConsumerService:
         self._consumer = KafkaConsumer(
             bootstrap_servers=bootstrap_servers,
             group_id=group_id,
-            value_deserializer=lambda v: v.decode('utf-8'),
-            key_deserializer=lambda k: k.decode('utf-8') if k is not None else None,
+            value_deserializer=lambda v: json.loads(v.decode("utf-8")),
+            key_deserializer=lambda k: json.loads(k.decode("utf-8")) if k is not None else None,
             auto_offset_reset='earliest',
             enable_auto_commit=True
         )
@@ -24,7 +25,7 @@ class KafkaConsumerService:
         """
         self._consumer.subscribe(topics)
 
-    def poll_events(self, timeout_ms: int = 1000) -> list[str, Any]:
+    def poll_events(self, timeout_ms: int = 1000) -> list[dict[str, Any]]:
         """
         Poll for events from subscribed topics
 
