@@ -24,8 +24,7 @@ class ElasticsearchService:
         try:
             self._client.indices.create(index=index_name, mappings=mapping, **kwargs)
             return True
-        except Exception as e:
-            print(e)
+        except Exception:
             return False
 
     # CRUD operations
