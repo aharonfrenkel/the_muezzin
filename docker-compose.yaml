@@ -1,0 +1,116 @@
+name: ${APP_NAME}
+
+services:
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: ${KAFKA_SERVICE}
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://${KAFKA_SERVICE}:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - kafka
+
+  mongodb:
+    image: mongodb/mongodb-community-server:7.0-ubuntu2204
+    container_name: ${MONGODB_SERVICE}
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGODB_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGODB_PASSWORD}
+      - MONGODB_INITDB_DATABASE=${MONGODB_DATABASE}
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - mongo
+
+  elasticsearch:
+    image: elasticsearch:8.15.5
+    container_name: ${ELASTICSEARCH_SERVICE}
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - elastic
+
+  kibana:
+    image: kibana:8.15.5
+    container_name: ${KIBANA_SERVICE}
+      - ELASTICSEARCH_HOSTS=http://${ELASTICSEARCH_SERVICE}:9200
+    ports:
+      - "5601:5601"
+    networks:
+      - elastic
+    depends_on:
+      - elasticsearch
+
+  retrieval:
+    build: .
+    container_name: retrieval
+    environment:
+      - LOCAL_FOLDER_PATH=${LOCAL_FOLDER_PATH}
+      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_SERVICE}
+      - KAFKA_TOPIC_NAME=${KAFKA_TOPIC_NAME}
+    networks:
+      - app
+
+  processing:
+    build: .
+    container_name: processing
+    environment:
+      - LOCAL_FOLDER_PATH=${LOCAL_FOLDER_PATH}
+      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_SERVICE}
+      - KAFKA_TOPIC_NAME=${KAFKA_TOPIC_NAME}
+    networks:
+      - app
+
+  speach_to_text:
+    build: .
+    container_name: speach_to_text
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_SERVICE}
+      - KAFKA_TOPIC_NAME=${KAFKA_TOPIC_NAME}
+      - ELASTICSEARCH_URI=${ELASTICSEARCH_URI}
+      - ELASTICSEARCH_INDEX_NAME=${ELASTICSEARCH_INDEX_NAME}
+      - MONGODB_URI=${MONGODB_URI}
+      - MONGODB_DB_NAME=${MONGODB_DB_NAME}
+    networks:
+      - app
+
+  investigation:
+    build: .
+    container_name: investigation
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_SERVICE}:9092
+    networks:
+      - app
+
+volumes:
+  mongodb_data:
+  elasticsearch_data:
+  kafka_data:
+
+networks:
+  mongo:
+    driver: bridge
+    internal: true
+  elastic:
+    driver: bridge
+    internal: true
+  kafka:
+    driver: bridge
+    internal: true
+  app:
+    driver: bridge
